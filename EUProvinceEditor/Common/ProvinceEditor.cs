@@ -6,863 +6,592 @@ using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace EUProvinceEditor.Common
 {
-   public delegate void DInitFinished ();
-   public delegate void DInitError    ();
+    public class ProvinceEditor
+    {
+        public event DInitFinished OnInitFinished;
+        public event DInitError OnInitError;
 
-   public class ProvinceEditor
-   {
-      public event DInitFinished OnInitFinished;
-      public event DInitError    OnInitError   ;
+        private Bitmap m_bitmapMouseCursor;
 
-      private List<MarkerItem> m_listMarkerItem = new List<MarkerItem> ();
+        private Encoding m_encoding1252;
 
-      private List<ProvinceDefinitionItem> m_listProvinceDefinition = new List<ProvinceDefinitionItem> ();
+        private ProvinceDefinitionItem[,] m_mapProvinceDefinitionItem;
 
-      private Bitmap m_bitmapMap             ;
-      private Bitmap m_bitmapMapOverlay      ;
-      private Bitmap m_bitmapMouseCursor     ;
-
-      private Encoding m_encoding1252;
-
-      private ProvinceDefinitionItem[,] m_mapProvinceDefinitionItem;
-
-      //------------------------------------------------------------------------
-
-      public void Init ()
-      {
-         DateTime start = DateTime.Now;
-
-         try
-         {
-            m_encoding1252 = Encoding.GetEncoding ( 1252 );
-
-            String pathOfMouseCursor = String.Format ( @"{0}\Gfx\{1}", Application.StartupPath, "cursor.png" );
-
-            m_bitmapMouseCursor = new Bitmap ( Bitmap.FromFile ( pathOfMouseCursor ) );
-
-            m_bitmapMouseCursor.MakeTransparent ( Color.White );
-
-            String pathOfMarker = String.Format ( @"{0}\{1}", Application.StartupPath, "marker.eu4tradenode" );
-
-            ReadProvinceDefinition ();
-
-            ReadMarker ( pathOfMarker );
-
-            ReadPixel ();
-
-            MarkProvinces ();
-            MarkLocation  ();
-
-            //------------------------------------------------------------------
-
-            OnInitFinished?.Invoke ();
-         }
-         catch ( Exception ex )
-         {
-            OnInitError?.Invoke ();
-         }
-
-         DateTime end = DateTime.Now;
-
-         TimeSpan diff = end - start;
-
-         Console.WriteLine ( "init time... " + diff.TotalSeconds );
-      }
-
-      public void ReadMarker ( String pathOfMarkerFile )
-      {
-         m_listMarkerItem.Clear ();
-
-         if ( File.Exists ( pathOfMarkerFile ))
-         {
-            Dictionary<int, int> dictDuplicateIdProvince = new Dictionary<int, int> ();
-
-            String[] listMarker = File.ReadAllLines ( pathOfMarkerFile, m_encoding1252 );
-
-            foreach ( String marker in listMarker )
+        public void Init()
+        {
+            DateTime start = DateTime.Now;
+            
+            try
             {
-               if ( !marker.Contains ( '#' ) )
-               {
-                  String[] listSplittedMarker = marker.Split ( '|' );
+                m_encoding1252 = Encoding.GetEncoding(1252);
 
-                  if ( listSplittedMarker.Length == 5 )
-                  {
-                     int r, g, b;
+                string pathOfMouseCursor = $@"{Application.StartupPath}\Gfx\{"cursor.png"}";
 
-                     String name;
+                m_bitmapMouseCursor = new Bitmap(Image.FromFile(pathOfMouseCursor));
 
-                     name = listSplittedMarker[0];
+                m_bitmapMouseCursor.MakeTransparent(Color.White);
 
-                     int.TryParse ( listSplittedMarker[1], out r );
-                     int.TryParse ( listSplittedMarker[2], out g );
-                     int.TryParse ( listSplittedMarker[3], out b );
+                string pathOfMarker = $@"{Application.StartupPath}\{"marker.eu4tradenode"}";
 
-                     String[] listIdProvince = listSplittedMarker[4].Split ( ',' );
+                ReadProvinceDefinition();
 
-                     MarkerItem markerItem = m_listMarkerItem.Find ( searchItem => (( searchItem.R == r ) && ( searchItem.G == g ) && ( searchItem.B == b )));
+                ReadMarker(pathOfMarker);
 
-                     if ( markerItem == null )
-                     {
-                        markerItem = new MarkerItem ( name, r, g, b, 255, 0, "" );
+                ReadPixel();
 
-                        foreach ( String stringIdProvince in listIdProvince )
+                MarkProvinces();
+                MarkLocation();
+
+                OnInitFinished?.Invoke();
+            }
+            catch
+            {
+                OnInitError?.Invoke();
+            }
+
+            DateTime end = DateTime.Now;
+            TimeSpan diff = end - start;
+
+            Console.WriteLine("init time... " + diff.TotalSeconds);
+        }
+
+        public void ReadMarker(string pathOfMarkerFile)
+        {
+            MarkerItems.Clear();
+
+            if (!File.Exists(pathOfMarkerFile)) return;
+            var dictDuplicateIdProvince = new Dictionary<int, int>();
+
+            string[] markers = File.ReadAllLines(pathOfMarkerFile, m_encoding1252);
+
+            foreach (string marker in markers)
+            {
+                if (marker.Contains('#')) continue;
+                    
+                string[] listSplittedMarker = marker.Split('|');
+
+                switch (listSplittedMarker.Length)
+                {
+                    case 5:
+                    {
+                        var name = listSplittedMarker[0];
+
+                        int.TryParse(listSplittedMarker[1], out var r);
+                        int.TryParse(listSplittedMarker[2], out var g);
+                        int.TryParse(listSplittedMarker[3], out var b);
+
+                        string[] listIdProvince = listSplittedMarker[4].Split(',');
+
+                        var markerItem = MarkerItems.Find(searchItem => searchItem.R == r && searchItem.G == g && searchItem.B == b);
+
+                        if (markerItem == null)
                         {
-                           int idProvince = -1;
+                            markerItem = new MarkerItem(name, r, g, b, 255, 0, "");
 
-                           int.TryParse ( stringIdProvince.Trim (), out idProvince );
+                            foreach (string stringIdProvince in listIdProvince)
+                            {
+                                int.TryParse(stringIdProvince.Trim(), out var idProvince);
 
-                           if ( ( idProvince > 0 ) && !dictDuplicateIdProvince.ContainsKey ( idProvince ) )
-                           {
-                              ProvinceDefinitionItem provinceDefinitionItem = m_listProvinceDefinition.Find ( findItem => findItem.IdProvince == idProvince );
+                                if (idProvince <= 0 || dictDuplicateIdProvince.ContainsKey(idProvince)) continue;
+                                    
+                                var provinceDefinitionItem = Provinces.Find(findItem => findItem.Id == idProvince);
 
-                              if ( provinceDefinitionItem != null )
-                              {
-                                 dictDuplicateIdProvince.Add ( idProvince, idProvince );
+                                if (provinceDefinitionItem == null) continue;
+                                dictDuplicateIdProvince.Add(idProvince, idProvince);
 
-                                 markerItem.ListProvince.Add ( provinceDefinitionItem );
-                              }
-                           }
+                                markerItem.Provinces.Add(provinceDefinitionItem);
+                            }
+
+                            MarkerItems.Add(markerItem);
                         }
 
-                        m_listMarkerItem.Add ( markerItem );
-                     }
-                  }
-                  else if ( listSplittedMarker.Length == 7 )
-                  {
-                     int r = 0, g = 0, b = 0, location = 0;
+                        break;
+                    }
+                    case 7:
+                    {
+                        var name = listSplittedMarker[0];
 
-                     String name;
+                        int.TryParse(listSplittedMarker[1], out int r);
+                        int.TryParse(listSplittedMarker[2], out int g);
+                        int.TryParse(listSplittedMarker[3], out int b);
 
-                     name = listSplittedMarker[0];
+                        int.TryParse(listSplittedMarker[4], out int location);
 
-                     int.TryParse ( listSplittedMarker[1], out r );
-                     int.TryParse ( listSplittedMarker[2], out g );
-                     int.TryParse ( listSplittedMarker[3], out b );
+                        string[] listIdProvince = listSplittedMarker[6].Split(',');
 
-                     int.TryParse ( listSplittedMarker[4], out location );
+                        var markerItem = MarkerItems.Find(searchItem => searchItem.R == r && searchItem.G == g && searchItem.B == b);
 
-                     String[] listIdProvince = listSplittedMarker[6].Split ( ',' );
+                        if (markerItem != null) continue;
 
-                     MarkerItem markerItem = m_listMarkerItem.Find ( searchItem => (( searchItem.R == r ) && ( searchItem.G == g ) && ( searchItem.B == b )));
+                        markerItem = new MarkerItem(name, r, g, b, 255, location, listSplittedMarker[5]);
 
-                     if ( markerItem == null )
-                     {
-                        markerItem = new MarkerItem ( name, r, g, b, 255, location, listSplittedMarker[5] );
-
-                        foreach ( String stringIdProvince in listIdProvince )
+                        var provinceIds = listIdProvince.Select(strId =>
                         {
-                           int idProvince = -1;
+                            int.TryParse(strId.Trim(), out var id);
+                            return id;
+                        }).Where(id => (id <= 0 || dictDuplicateIdProvince.ContainsKey(id)) == false).ToList();
 
-                           int.TryParse ( stringIdProvince.Trim (), out idProvince );
+                        var provinces = provinceIds.Select(id =>
+                            Provinces.Find(province => province.Id == id));
 
-                           if ( ( idProvince > 0 ) && !dictDuplicateIdProvince.ContainsKey ( idProvince ) )
-                           {
-                              ProvinceDefinitionItem provinceDefinitionItem = m_listProvinceDefinition.Find ( findItem => findItem.IdProvince == idProvince );
-
-                              if ( provinceDefinitionItem != null )
-                              {
-                                 dictDuplicateIdProvince.Add ( idProvince, idProvince );
-
-                                 markerItem.ListProvince.Add ( provinceDefinitionItem );
-                              }
-                           }
+                        foreach (var province in provinces)
+                        {
+                            dictDuplicateIdProvince.Add(province.Id, province.Id);
+                            markerItem.Provinces.Add(province);
                         }
 
-                        m_listMarkerItem.Add ( markerItem );
-                     }
-                     else
-                     {
-                        int k = 4711;
-                     }
-                  }
-                  else
-                  {
-                     int k = 4711;
-                  }
-               }
+                        MarkerItems.Add(markerItem);
+                        break;
+                    }
+                }
             }
 
-            //------------------------------------------------------------------
-
-            foreach ( MarkerItem markerItem in m_listMarkerItem )
+            foreach (var markerItem in MarkerItems)
             {
-               String[] listOutgoing = markerItem.Outgoing.Split ( ',' );
+                string[] listOutgoing = markerItem.Outgoing.Split(',');
 
-               foreach ( String outgoing in listOutgoing )
-               {
-                  if ( outgoing.Length > 0 )
-                  {
-                     markerItem.ListOutgoing.AddRange ( m_listMarkerItem.FindAll ( findItem => findItem.Name.Equals ( outgoing )));
-                  }
-               }
+                foreach (string outgoing in listOutgoing.Where(outgoing => outgoing.Length > 0))
+                    markerItem.OutgoingItems.AddRange(MarkerItems.FindAll(findItem => findItem.Name.Equals(outgoing)));
             }
-         }
-      }
+        }
 
-      private void ReadProvinceDefinition ()
-      {
-         m_listProvinceDefinition.Clear ();
+        private void ReadProvinceDefinition()
+        {
+            Provinces.Clear();
 
-         String pathOfProvinceDefinition = String.Format ( @"{0}\{1}", Application.StartupPath, "definition.csv" );
+            string pathOfProvinceDefinition = $@"{Application.StartupPath}\{"definition.csv"}";
 
-         if ( File.Exists ( pathOfProvinceDefinition ) )
-         {
-            String[] listDefinition = File.ReadAllLines ( pathOfProvinceDefinition, m_encoding1252 );
+            if (!File.Exists(pathOfProvinceDefinition)) return;
+            string[] definitions = File.ReadAllLines(pathOfProvinceDefinition, m_encoding1252);
 
-            foreach ( String definition in listDefinition )
+            foreach (string definition in definitions)
             {
-               String[] listSplittedDefinition = definition.Split ( ';' );
+                string[] listSplittedDefinition = definition.Split(';');
 
-               if ( listSplittedDefinition.Length >= 5 )
-               {
-                  int idProvince, r, g, b;
+                if (listSplittedDefinition.Length < 5) continue;
 
-                  String nameOf, x;
+                int.TryParse(listSplittedDefinition[0], out int idProvince);
+                int.TryParse(listSplittedDefinition[1], out int r);
+                int.TryParse(listSplittedDefinition[2], out int g);
+                int.TryParse(listSplittedDefinition[3], out int b);
 
-                  int.TryParse ( listSplittedDefinition[0], out idProvince );
-                  int.TryParse ( listSplittedDefinition[1], out r );
-                  int.TryParse ( listSplittedDefinition[2], out g );
-                  int.TryParse ( listSplittedDefinition[3], out b );
+                string nameOf = listSplittedDefinition[4];
 
-                  nameOf = listSplittedDefinition[4];
-                  x = "";
+                var provinceDefinitionItem = Provinces.Find(searchItem => ((searchItem.R == r) && (searchItem.G == g) && (searchItem.B == b)));
 
-                  ProvinceDefinitionItem provinceDefinitionItem = m_listProvinceDefinition.Find ( searchItem => (( searchItem.R == r ) && ( searchItem.G == g ) && ( searchItem.B == b )));
-
-                  if ( provinceDefinitionItem == null )
-                  {
-                     m_listProvinceDefinition.Add ( new ProvinceDefinitionItem ( idProvince, r, g, b, nameOf, x ) );
-                  }
-                  else
-                  {
-                     int k = 4711;
-                  }
-               }
-               else
-               {
-                  int k = 4711;
-               }
+                if (provinceDefinitionItem == null)
+                    Provinces.Add(new ProvinceDefinitionItem(idProvince, r, g, b, nameOf, string.Empty));
             }
-         }
-      }
+        }
 
-      private void ReadPixel ()
-      {
-         String pathOfBitmapMap = String.Format ( @"{0}\{1}", Application.StartupPath, @"Gfx\provinces.bmp" );
+        private void ReadPixel()
+        {
+            string pathOfBitmapMap = $@"{Application.StartupPath}\{@"Gfx\provinces.bmp"}";
 
-         if ( File.Exists ( pathOfBitmapMap ) )
-         {
-            int idProvince = GetMaxIdProvince ();
+            if (File.Exists(pathOfBitmapMap) == false) return;
+            
+            int idProvince = GetMaxIdProvince();
 
-            //------------------------------------------------------------------
+            var dictCache = Provinces.ToDictionary(p => $"{p.R}{p.G}{p.B}");
 
-            StringBuilder colorKey = new StringBuilder ();
+            BitmapMap = new Bitmap(Image.FromFile(pathOfBitmapMap));
 
-            Dictionary<String, ProvinceDefinitionItem> dictCache = new Dictionary<string, ProvinceDefinitionItem> ();
+            m_mapProvinceDefinitionItem = new ProvinceDefinitionItem[BitmapMap.Width, BitmapMap.Height];
 
-            foreach ( ProvinceDefinitionItem provinceDefinitionItemCache in m_listProvinceDefinition )
-            {
-               colorKey.Clear ();
+            Rectangle rectangle = new Rectangle(0, 0, BitmapMap.Width, BitmapMap.Height);
 
-               colorKey.Append ( provinceDefinitionItemCache.R );
-               colorKey.Append ( provinceDefinitionItemCache.G );
-               colorKey.Append ( provinceDefinitionItemCache.B );
+            BitmapData bitmapData = BitmapMap.LockBits(rectangle, ImageLockMode.ReadOnly, BitmapMap.PixelFormat);
 
-               dictCache.Add ( colorKey.ToString (), provinceDefinitionItemCache );
-            }
-
-            //------------------------------------------------------------------
-
-            String colorKeyString = "";
-
-            Color pixelColor;
-
-            m_bitmapMap = new Bitmap ( Bitmap.FromFile ( pathOfBitmapMap ) );
-
-            m_mapProvinceDefinitionItem = new ProvinceDefinitionItem[m_bitmapMap.Width, m_bitmapMap.Height];
-
-            Rectangle rectangle = new Rectangle ( 0, 0, m_bitmapMap.Width, m_bitmapMap.Height );
-
-            System.Drawing.Imaging.BitmapData bitmapData = m_bitmapMap.LockBits ( rectangle, System.Drawing.Imaging.ImageLockMode.ReadOnly, m_bitmapMap.PixelFormat );
-
-            int length = bitmapData.Stride * m_bitmapMap.Height;
+            int length = bitmapData.Stride * BitmapMap.Height;
 
             byte[] rawBytes = new byte[length];
 
-            System.Runtime.InteropServices.Marshal.Copy ( bitmapData.Scan0, rawBytes, 0, length );
+            System.Runtime.InteropServices.Marshal.Copy(bitmapData.Scan0, rawBytes, 0, length);
 
-            m_bitmapMap.UnlockBits ( bitmapData );
+            BitmapMap.UnlockBits(bitmapData);
 
-            ProvinceDefinitionItem provinceDefinitionItem = new ProvinceDefinitionItem ();
+            var province = new ProvinceDefinitionItem();
 
-            for ( int nXndex = 0; nXndex < m_bitmapMap.Width; nXndex++ )
+            var colorKey = new StringBuilder();
+
+            for (int nXndex = 0; nXndex < BitmapMap.Width; nXndex++)
             {
-               for ( int nYndex = 0; nYndex < m_bitmapMap.Height; nYndex++ )
-               {
-                  pixelColor = Color.FromArgb ( rawBytes[nYndex * bitmapData.Stride + nXndex * 4 + 3], rawBytes[nYndex * bitmapData.Stride + nXndex * 4 + 2], rawBytes[nYndex * bitmapData.Stride + nXndex * 4 + 1], rawBytes[nYndex * bitmapData.Stride + nXndex * 4] );
+                for (int nYndex = 0; nYndex < BitmapMap.Height; nYndex++)
+                {
+                    var pixelColor = Color.FromArgb(rawBytes[nYndex * bitmapData.Stride + nXndex * 4 + 3], rawBytes[nYndex * bitmapData.Stride + nXndex * 4 + 2], rawBytes[nYndex * bitmapData.Stride + nXndex * 4 + 1], rawBytes[nYndex * bitmapData.Stride + nXndex * 4]);
 
-                  if ( !( ( provinceDefinitionItem.R == pixelColor.R ) && ( provinceDefinitionItem.G == pixelColor.G ) && ( provinceDefinitionItem.B == pixelColor.B ) ) )
-                  {
-                     colorKey.Clear ();
+                    if (!(province.R == pixelColor.R && province.G == pixelColor.G && province.B == pixelColor.B))
+                    {
+                        colorKey.Clear();
 
-                     colorKey.Append ( pixelColor.R );
-                     colorKey.Append ( pixelColor.G );
-                     colorKey.Append ( pixelColor.B );
+                        colorKey.Append(pixelColor.R);
+                        colorKey.Append(pixelColor.G);
+                        colorKey.Append(pixelColor.B);
 
-                     colorKeyString = colorKey.ToString ();
+                        var colorKeyString = colorKey.ToString();
 
-                     if ( dictCache.ContainsKey ( colorKeyString ) )
-                     {
-                        provinceDefinitionItem = dictCache[colorKeyString];
-                     }
-                     else
-                     {
-                        String name = String.Format ( "NewProvince_{0}", idProvince );
+                        province = dictCache.ContainsKey(colorKeyString) ? 
+                            dictCache[colorKeyString] : 
+                            new ProvinceDefinitionItem(++idProvince, pixelColor.R, pixelColor.G, pixelColor.B, $"NewProvince_{idProvince}", string.Empty);
+                    }
 
-                        provinceDefinitionItem = new ProvinceDefinitionItem ( ++idProvince, pixelColor.R, pixelColor.G, pixelColor.B, name, "" );
-                     }
-                  }
+                    province.Pixels.Add(new Pixel(nXndex, nYndex));
 
-                  provinceDefinitionItem.ListPixel.Add ( new Pixel ( nXndex, nYndex ) );
-
-                  m_mapProvinceDefinitionItem[nXndex, nYndex] = provinceDefinitionItem;
-               }
+                    m_mapProvinceDefinitionItem[nXndex, nYndex] = province;
+                }
             }
 
-            m_bitmapMapOverlay = new Bitmap ( m_bitmapMap );
-         }
-      }
+            BitmapMapOverlay = new Bitmap(BitmapMap);
+        }
 
-      //------------------------------------------------------------------------
+        public void MarkProvinces()
+        {
+            BitmapMapOverlay = new Bitmap(BitmapMap);
 
-      public void MarkProvinces ()
-      {
-         m_bitmapMapOverlay = new Bitmap ( m_bitmapMap );
+            foreach (var markerItem in MarkerItems)
+                foreach (var pixel in markerItem.Provinces.SelectMany(province => province.Pixels))
+                    BitmapMapOverlay.SetPixel(pixel.XPos, pixel.YPos, markerItem.Color);
+        }
 
-         foreach ( MarkerItem markerItem in m_listMarkerItem )
-         {
-            foreach ( ProvinceDefinitionItem provinceDefinitionItem in markerItem.ListProvince )
-            {
-               foreach ( Pixel pixel in provinceDefinitionItem.ListPixel )
-               {
-                  m_bitmapMapOverlay.SetPixel ( pixel.XPos, pixel.YPos, markerItem.Color );
-               }
-            }
-         }
-      }
+        public void MarkLocation()
+        {
+            var provinces = MarkerItems
+                .Select(markerItem => markerItem.Provinces.Find(province => province.Id == markerItem.Location))
+                .Where(province => province != null);
+            
+            foreach (var province in provinces)
+                DrawCheckeredListPixel(province, Color.Black);
+        }
 
-      public void MarkLocation ()
-      {
-         foreach ( MarkerItem markerItem in m_listMarkerItem )
-         {
-            ProvinceDefinitionItem provinceDefinitionItem = markerItem.ListProvince.Find ( findItem => findItem.IdProvince == markerItem.Location );
+        public void MarkOutgoing(MarkerItem markerItem)
+        {
+            var provinces = from outgoingMarkerItem in markerItem.OutgoingItems
+                        from provinceDefinitionItem in outgoingMarkerItem.Provinces
+                        where outgoingMarkerItem.Location != provinceDefinitionItem.Id
+                        select provinceDefinitionItem;
 
-            if ( provinceDefinitionItem != null )
-            {
-               DrawCheckeredListPixel ( provinceDefinitionItem, Color.Black );
-            }
-         }
-      }
+            foreach (var province in provinces)
+                DrawHorizontalListPixel(province, Color.White);
 
-      public void MarkOutgoing ( MarkerItem markerItem )
-      {
-         foreach ( MarkerItem outgoingMarkerItem in markerItem.ListOutgoing )
-         {
-            foreach ( ProvinceDefinitionItem provinceDefinitionItem in outgoingMarkerItem.ListProvince )
-            {
-               if ( outgoingMarkerItem.Location != provinceDefinitionItem.IdProvince )
-               {
-                  DrawHorizontalListPixel ( provinceDefinitionItem, Color.White );
-               }
-            }
-         }
+            foreach (var province in MarkerItems.Where(ingoingMarkerItem => ingoingMarkerItem.OutgoingItems.Contains(markerItem)).SelectMany(ingoingMarkerItem => ingoingMarkerItem.Provinces.Where(provinceDefinitionItem => ingoingMarkerItem.Location != provinceDefinitionItem.Id)))
+                DrawVerticalListPixel(province, Color.White);
+        }
 
-         foreach ( MarkerItem ingoingMarkerItem in m_listMarkerItem )
-         {
-            if ( ingoingMarkerItem.ListOutgoing.Contains ( markerItem ))
-            {
-               foreach ( ProvinceDefinitionItem provinceDefinitionItem in ingoingMarkerItem.ListProvince )
-               {
-                  if ( ingoingMarkerItem.Location != provinceDefinitionItem.IdProvince )
-                  {
-                     DrawVerticalListPixel ( provinceDefinitionItem, Color.White );
-                  }
-               }
-            }
-         }
-      }
-
-      //------------------------------------------------------------------------
-
-      public void Mark ( MarkerItem markerItem, int xPos, int yPos )
-      {
-         if ( xPos <= m_mapProvinceDefinitionItem.GetLength ( 0 ) && yPos <= m_mapProvinceDefinitionItem.GetLength ( 1 ) )
-         {
-            ProvinceDefinitionItem provinceDefinitionItem = m_mapProvinceDefinitionItem[xPos,yPos];
+        public void Mark(MarkerItem markerItem, int xPos, int yPos)
+        {
+            if (xPos > m_mapProvinceDefinitionItem.GetLength(0) ||
+                yPos > m_mapProvinceDefinitionItem.GetLength(1)) return;
+            var province = m_mapProvinceDefinitionItem[xPos, yPos];
 
             Color drawColor;
 
-            if ( markerItem.ListProvince.Contains ( provinceDefinitionItem ) )
+            if (markerItem.Provinces.Contains(province))
             {
-               markerItem.ListProvince.Remove ( provinceDefinitionItem );
+                markerItem.Provinces.Remove(province);
 
-               drawColor = Color.FromArgb ( 0, 0, 0, 0 );
+                drawColor = Color.FromArgb(0, 0, 0, 0);
             }
             else
             {
-               foreach ( MarkerItem clearMarkerItem in m_listMarkerItem )
-               {
-                  clearMarkerItem.ListProvince.Remove ( provinceDefinitionItem );
-               }
+                foreach (var clearMarkerItem in MarkerItems)
+                    clearMarkerItem.Provinces.Remove(province);
 
-               markerItem.ListProvince.Add ( provinceDefinitionItem );
+                markerItem.Provinces.Add(province);
 
-               drawColor = markerItem.Color;
+                drawColor = markerItem.Color;
             }
 
-            //------------------------------------------------------------------
+            foreach (var pixel in province.Pixels)
+                BitmapMapOverlay.SetPixel(pixel.XPos, pixel.YPos, drawColor);
+        }
 
-            foreach ( Pixel pixel in provinceDefinitionItem.ListPixel )
+        public void MarkLocation(MarkerItem markerItem, int xPos, int yPos)
+        {
+            if (xPos > m_mapProvinceDefinitionItem.GetLength(0) ||
+                yPos > m_mapProvinceDefinitionItem.GetLength(1)) return;
+
+            var provinceDefinitionItem = m_mapProvinceDefinitionItem[xPos, yPos];
+
+            if (!markerItem.Provinces.Contains(provinceDefinitionItem)) return;
+            if (markerItem.Location == provinceDefinitionItem.Id) return;
+            
+            var oldProvince = markerItem.Provinces.Find(findItem => findItem.Id == markerItem.Location);
+
+            if (oldProvince != null)
+                DrawCheckeredListPixel(oldProvince, markerItem.Color);
+
+            markerItem.Location = provinceDefinitionItem.Id;
+
+            DrawCheckeredListPixel(provinceDefinitionItem, Color.Black);
+        }
+
+        public void MarkOutgoing(MarkerItem markerItem, int xPos, int yPos)
+        {
+            if (xPos > m_mapProvinceDefinitionItem.GetLength(0) ||
+                yPos > m_mapProvinceDefinitionItem.GetLength(1)) return;
+            var markedProvince = m_mapProvinceDefinitionItem[xPos, yPos];
+
+            var outgoingMarkerItem = MarkerItems.Find(mi => mi.Provinces.Contains(markedProvince));
+
+            if (outgoingMarkerItem == null || outgoingMarkerItem == markerItem ||
+                outgoingMarkerItem.OutgoingItems.Contains(markerItem)) return;
+            
+            if (markerItem.OutgoingItems.Contains(outgoingMarkerItem))
             {
-               m_bitmapMapOverlay.SetPixel ( pixel.XPos, pixel.YPos, drawColor );
-            }
-         }
-         else
-         {
-            int k = 4711;
-         }
-      }
+                markerItem.OutgoingItems.Remove(outgoingMarkerItem);
 
-      public void MarkLocation ( MarkerItem markerItem, int xPos, int yPos )
-      {
-         if ( xPos <= m_mapProvinceDefinitionItem.GetLength ( 0 ) && yPos <= m_mapProvinceDefinitionItem.GetLength ( 1 ))
-         {
-            ProvinceDefinitionItem provinceDefinitionItem = m_mapProvinceDefinitionItem[xPos,yPos];
-
-            if ( markerItem.ListProvince.Contains ( provinceDefinitionItem ) )
-            {
-               if ( markerItem.Location != provinceDefinitionItem.IdProvince )
-               {
-                  ProvinceDefinitionItem oldProvinceDefinitionItem = markerItem.ListProvince.Find ( findItem => ( findItem.IdProvince == markerItem.Location ));
-
-                  if ( oldProvinceDefinitionItem != null )
-                  {
-                     DrawCheckeredListPixel ( oldProvinceDefinitionItem, markerItem.Color );
-                  }
-
-                  markerItem.Location = provinceDefinitionItem.IdProvince;
-
-                  DrawCheckeredListPixel ( provinceDefinitionItem, Color.Black );
-               }
-               else
-               {
-                  // nothing todo
-               }
-            }
-         }
-      }
-
-      public void MarkOutgoing ( MarkerItem markerItem, int xPos, int yPos )
-      {
-         if ( xPos <= m_mapProvinceDefinitionItem.GetLength ( 0 ) && yPos <= m_mapProvinceDefinitionItem.GetLength ( 1 ))
-         {
-            ProvinceDefinitionItem markedProvinceDefinitionItem = m_mapProvinceDefinitionItem[xPos, yPos];
-
-            MarkerItem outgoingMarkterItem = m_listMarkerItem.Find ( findItem => findItem.ListProvince.Contains ( markedProvinceDefinitionItem ));
-
-            if (( outgoingMarkterItem != null ) && ( outgoingMarkterItem != markerItem ) && !outgoingMarkterItem.ListOutgoing.Contains ( markerItem ))
-            {
-               if ( markerItem.ListOutgoing.Contains ( outgoingMarkterItem ))
-               {
-                  markerItem.ListOutgoing.Remove ( outgoingMarkterItem );
-
-                  foreach ( ProvinceDefinitionItem provinceDefinitionItem in outgoingMarkterItem.ListProvince )
-                  {
-                     if ( outgoingMarkterItem.Location != provinceDefinitionItem.IdProvince )
-                     {
-                        DrawHorizontalListPixel ( provinceDefinitionItem, outgoingMarkterItem.Color );
-                     }
-                  }
-               }
-               else
-               {
-                  markerItem.ListOutgoing.Add ( outgoingMarkterItem );
-
-                  foreach ( ProvinceDefinitionItem provinceDefinitionItem in outgoingMarkterItem.ListProvince )
-                  {
-                     if ( outgoingMarkterItem.Location != provinceDefinitionItem.IdProvince )
-                     {
-                        DrawHorizontalListPixel ( provinceDefinitionItem, Color.White );
-                     }
-                  }
-               }
+                foreach (var provinceDefinitionItem in outgoingMarkerItem.Provinces.Where(provinceDefinitionItem => outgoingMarkerItem.Location != provinceDefinitionItem.Id))
+                    DrawHorizontalListPixel(provinceDefinitionItem, outgoingMarkerItem.Color);
             }
             else
             {
-               // nothing todo
+                markerItem.OutgoingItems.Add(outgoingMarkerItem);
+
+                foreach (var provinceDefinitionItem in outgoingMarkerItem.Provinces.Where(provinceDefinitionItem => outgoingMarkerItem.Location != provinceDefinitionItem.Id))
+                    DrawHorizontalListPixel(provinceDefinitionItem, Color.White);
             }
-         }
-      }
+        }
 
-      public void Clear ()
-      {
-         m_bitmapMapOverlay = new Bitmap ( m_bitmapMap );
+        public void Clear()
+        {
+            BitmapMapOverlay = new Bitmap(BitmapMap);
 
-         foreach ( MarkerItem markerItem in m_listMarkerItem )
-         {
-            markerItem.ListProvince.Clear ();
-         }
-      }
+            foreach (var mi in MarkerItems)
+                mi.Provinces.Clear();
+        }
 
-      private Bitmap ResizeImage ( Bitmap originalBitmap )
-      {
-         float zoom = 1.0f;
-
-         int width  = ( int )( originalBitmap.Width  * zoom );
-         int height = ( int )( originalBitmap.Height * zoom );
-
-         var resizedRect = new Rectangle ( 0, 0, width, height );
-
-         var resizedImage = new Bitmap ( width, height );
-
-         resizedImage.SetResolution ( originalBitmap.HorizontalResolution, originalBitmap.VerticalResolution );
-
-         using ( var graphics = Graphics.FromImage ( resizedImage ) )
-         {
-            graphics.CompositingMode = CompositingMode.SourceOver;
-            graphics.CompositingQuality = CompositingQuality.HighSpeed;
-            graphics.InterpolationMode = InterpolationMode.Low;
-            graphics.SmoothingMode = SmoothingMode.None;
-            graphics.PixelOffsetMode = PixelOffsetMode.None;
-
-            using ( var wrapMode = new ImageAttributes () )
+        public void ChangeMarker(MarkerItem oldMarkerItem, MarkerItem markerItem)
+        {
+            if (oldMarkerItem != null)
             {
-               wrapMode.SetWrapMode ( WrapMode.TileFlipXY );
+                foreach (var outgoingMi in oldMarkerItem.OutgoingItems)
+                    foreach (var province in outgoingMi.Provinces.Where(province => outgoingMi.Location != province.Id))
+                        DrawHorizontalListPixel(province, outgoingMi.Color);
 
-               graphics.DrawImage ( originalBitmap, resizedRect, 0, 0, originalBitmap.Width, originalBitmap.Height, GraphicsUnit.Pixel, wrapMode );
+                foreach (var ingoingMi in MarkerItems.Where(mi => mi.OutgoingItems.Contains(oldMarkerItem)))
+                    foreach (var province in ingoingMi.Provinces.Where(province => ingoingMi.Location != province.Id))
+                        DrawVerticalListPixel(province, ingoingMi.Color);
             }
-         }
 
-         return resizedImage;
-      }
-
-      public void ChangeMarker ( MarkerItem oldMarkerItem, MarkerItem markerItem )
-      {
-         if ( oldMarkerItem != null )
-         {
-            foreach ( MarkerItem outgoingMarkerItem in oldMarkerItem.ListOutgoing )
+            foreach (var provinceDefinitionItem in
+                markerItem.OutgoingItems.SelectMany(outgoingMarkerItem => outgoingMarkerItem.Provinces
+                    .Where(provinceDefinitionItem => outgoingMarkerItem.Location != provinceDefinitionItem.Id)))
             {
-               foreach ( ProvinceDefinitionItem provinceDefinitionItem in outgoingMarkerItem.ListProvince )
-               {
-                  if ( outgoingMarkerItem.Location != provinceDefinitionItem.IdProvince )
-                  {
-                     DrawHorizontalListPixel ( provinceDefinitionItem, outgoingMarkerItem.Color );
-                  }
-               }
+                DrawHorizontalListPixel(provinceDefinitionItem, Color.White);
             }
 
-            foreach ( MarkerItem ingoingMarkerItem in m_listMarkerItem )
+            foreach (var provinceDefinitionItem in
+                MarkerItems.Where(ingoingMarkerItem =>
+                    ingoingMarkerItem.OutgoingItems.Contains(markerItem)).SelectMany(ingoingMarkerItem =>
+                    ingoingMarkerItem.Provinces.Where(provinceDefinitionItem =>
+                        ingoingMarkerItem.Location != provinceDefinitionItem.Id)))
             {
-               if ( ingoingMarkerItem.ListOutgoing.Contains ( oldMarkerItem ))
-               {
-                  foreach ( ProvinceDefinitionItem provinceDefinitionItem in ingoingMarkerItem.ListProvince )
-                  {
-                     if ( ingoingMarkerItem.Location != provinceDefinitionItem.IdProvince )
-                     {
-                        DrawVerticalListPixel ( provinceDefinitionItem, ingoingMarkerItem.Color );
-                     }
-                  }
-               }
+                DrawVerticalListPixel(provinceDefinitionItem, Color.White);
             }
-         }
+        }
 
-         //---------------------------------------------------------------------
+        public void SaveMarker(string pathOfMarkerFile)
+        {
+            var listMarkerString = new List<string>();
 
-         foreach ( MarkerItem outgoingMarkerItem in markerItem.ListOutgoing )
-         {
-            foreach ( ProvinceDefinitionItem provinceDefinitionItem in outgoingMarkerItem.ListProvince )
+            var idProvinceBuilder = new StringBuilder(1000);
+            var outgoingBuilder = new StringBuilder(1000);
+
+            foreach (var markerItem in MarkerItems)
             {
-               if ( outgoingMarkerItem.Location != provinceDefinitionItem.IdProvince )
-               {
-                  DrawHorizontalListPixel ( provinceDefinitionItem, Color.White );
-               }
-            }
-         }
+                idProvinceBuilder.Clear();
+                outgoingBuilder.Clear();
 
-         foreach ( MarkerItem ingoingMarkerItem in m_listMarkerItem )
-         {
-            if ( ingoingMarkerItem.ListOutgoing.Contains ( markerItem ))
+                bool bComma = false;
+
+                foreach (var outgoingMarkerItem in markerItem.OutgoingItems)
+                {
+                    if (bComma)
+                    {
+                        outgoingBuilder.Append(",");
+                    }
+
+                    outgoingBuilder.Append(outgoingMarkerItem.Name);
+
+                    bComma = true;
+                }
+
+                bComma = false;
+
+                foreach (var province in markerItem.Provinces)
+                {
+                    if (bComma)
+                    {
+                        idProvinceBuilder.Append(",");
+                    }
+
+                    idProvinceBuilder.Append(province.Id);
+
+                    bComma = true;
+                }
+
+                listMarkerString.Add($"{markerItem.Name}|{markerItem.R}|{markerItem.G}|{markerItem.B}|{markerItem.Location}|{outgoingBuilder}|{idProvinceBuilder}");
+            }
+
+            File.WriteAllLines(pathOfMarkerFile, listMarkerString, m_encoding1252);
+        }
+
+        public void SaveMap(string bitmapPath)
+        {
+            int width = BitmapMap.Width;
+            int height = BitmapMap.Height;
+
+            var saveBitmap = new Bitmap(width, height);
+
+            using (var graphics = Graphics.FromImage(saveBitmap))
             {
-               foreach ( ProvinceDefinitionItem provinceDefinitionItem in ingoingMarkerItem.ListProvince )
-               {
-                  if ( ingoingMarkerItem.Location != provinceDefinitionItem.IdProvince )
-                  {
-                     DrawVerticalListPixel ( provinceDefinitionItem, Color.White );
-                  }
-               }
+                graphics.CompositingMode = CompositingMode.SourceOver;
+                graphics.CompositingQuality = CompositingQuality.HighSpeed;
+                graphics.InterpolationMode = InterpolationMode.Low;
+                graphics.SmoothingMode = SmoothingMode.HighSpeed;
+                graphics.PixelOffsetMode = PixelOffsetMode.HighSpeed;
+
+                using (var wrapMode = new ImageAttributes())
+                {
+                    wrapMode.SetWrapMode(WrapMode.TileFlipXY);
+
+                    var rectangle = new Rectangle(0, 0, width, height);
+                    graphics.DrawImage(BitmapMap, rectangle, 0, 0, width, height, GraphicsUnit.Pixel, wrapMode);
+                    graphics.DrawImage(BitmapMapOverlay, rectangle, 0, 0, width, height, GraphicsUnit.Pixel, wrapMode);
+                }
             }
-         }
-      }
 
-      //------------------------------------------------------------------------
-
-      public void SaveMarker ( String pathOfMarkerFile )
-      {
-         List<String> listMarkerString = new List<String>();
-
-         StringBuilder idProvinceBuilder = new StringBuilder ( 1000 );
-         StringBuilder outgoingBuilder   = new StringBuilder ( 1000 );
-
-         foreach ( MarkerItem markerItem in m_listMarkerItem )
-         {
-            idProvinceBuilder.Clear ();
-            outgoingBuilder.Clear ();
-
-            bool bComma = false;
-
-            foreach ( MarkerItem outgoingMarkerItem in markerItem.ListOutgoing )
+            try
             {
-               if ( bComma )
-               {
-                  outgoingBuilder.Append ( "," );
-               }
-
-               outgoingBuilder.Append ( outgoingMarkerItem.Name );
-
-               bComma = true;
+                saveBitmap.Save(bitmapPath);
             }
+            finally{  }
+        }
 
-            bComma = false;
+        public void Export(string pathOfExportFile)
+        {
+            var template = new StringBuilder(1000);
 
-            foreach ( ProvinceDefinitionItem provinceDefinitionItem in markerItem.ListProvince )
+            foreach (var markerItem in MarkerItems)
             {
-               if ( bComma )
-               {
-                  idProvinceBuilder.Append ( "," );
-               }
+                var color = markerItem.R + " " + markerItem.G + " " + markerItem.B;
 
-               idProvinceBuilder.Append ( provinceDefinitionItem.IdProvince );
+                template.Append(markerItem.Name + "={" + Environment.NewLine);
+                template.Append("   location=" + markerItem.Location + Environment.NewLine);
+                template.Append(Environment.NewLine);
+                template.Append("   color={" + Environment.NewLine);
+                template.Append("      " + color + Environment.NewLine);
+                template.Append("   }" + Environment.NewLine);
+                template.Append(Environment.NewLine);
+                template.Append("   members={" + Environment.NewLine);
+                template.Append("      " + markerItem.ListMembers() + Environment.NewLine);
+                template.Append("   }" + Environment.NewLine);
 
-               bComma = true;
+                foreach (var item in markerItem.OutgoingItems)
+                {
+                    template.Append(Environment.NewLine);
+                    template.Append("   outgoing={" + Environment.NewLine);
+                    template.Append("      name=\"" + item.Name + "\"" + Environment.NewLine);
+                    template.Append(Environment.NewLine);
+                    template.Append("      path={" + Environment.NewLine);
+                    template.Append("      }" + Environment.NewLine);
+                    template.Append(Environment.NewLine);
+                    template.Append("      control={" + Environment.NewLine);
+                    template.Append("      }" + Environment.NewLine);
+                    template.Append("   }" + Environment.NewLine);
+                }
+
+                if (markerItem.OutgoingItems.Count == 0)
+                {
+                    template.Append(Environment.NewLine);
+                    template.Append("   end=yes" + Environment.NewLine);
+                }
+
+                template.Append("}" + Environment.NewLine + Environment.NewLine);
             }
 
-            listMarkerString.Add ( String.Format ( "{0}|{1}|{2}|{3}|{4}|{5}|{6}", markerItem.Name, markerItem.R, markerItem.G, markerItem.B, markerItem.Location, outgoingBuilder.ToString (), idProvinceBuilder.ToString () ) );
-         }
+            File.WriteAllText(pathOfExportFile, template.ToString());
+        }
 
-         File.WriteAllLines ( pathOfMarkerFile, listMarkerString, m_encoding1252 );
-      }
+        public Bitmap ZoomImage(int xPos, int yPos, int width, int height)
+        {
+            int halfWidth = width / 2;
+            int halfHeight = height / 2;
 
-      public void SaveMap ( String pathOfBitmap )
-      {
-         int width  = m_bitmapMap.Width ;
-         int height = m_bitmapMap.Height;
-
-         Bitmap saveBitmap = new Bitmap ( width, height );
-
-         using ( var graphics = Graphics.FromImage ( saveBitmap ) )
-         {
-            graphics.CompositingMode = CompositingMode.SourceOver;
-            graphics.CompositingQuality = CompositingQuality.HighSpeed;
-            graphics.InterpolationMode = InterpolationMode.Low;
-            graphics.SmoothingMode = SmoothingMode.HighSpeed;
-            graphics.PixelOffsetMode = PixelOffsetMode.HighSpeed;
-
-            using ( var wrapMode = new ImageAttributes () )
+            if (xPos < halfWidth)
             {
-               wrapMode.SetWrapMode ( WrapMode.TileFlipXY );
-
-               Rectangle rectangle = new Rectangle ( 0, 0, width, height );
-
-               graphics.DrawImage ( m_bitmapMap, rectangle, 0, 0, width, height, GraphicsUnit.Pixel, wrapMode );
-               graphics.DrawImage ( m_bitmapMapOverlay, rectangle, 0, 0, width, height, GraphicsUnit.Pixel, wrapMode );
+                xPos = 0;
             }
-         }
-
-         try
-         {
-            saveBitmap.Save ( pathOfBitmap );
-         }
-         catch ( Exception ex )
-         {
-            int k = 4711;
-         }
-      }
-
-      public void Export ( String pathOfExportFile )
-      {
-         StringBuilder template = new StringBuilder ( 1000 );
-
-         foreach ( MarkerItem markerItem in m_listMarkerItem )
-         {
-            String color = markerItem.R + " " + markerItem.G + " " + markerItem.B;
-
-            template.Append ( markerItem.Name + "={"               + Environment.NewLine );
-            template.Append ( "   location=" + markerItem.Location + Environment.NewLine );
-            template.Append ( ""                                   + Environment.NewLine );
-            template.Append ( "   color={"                         + Environment.NewLine );
-            template.Append ( "      " + color                     + Environment.NewLine );
-            template.Append ( "   }"                               + Environment.NewLine );
-            template.Append ( ""                                   + Environment.NewLine );
-            template.Append ( "   members={"                       + Environment.NewLine );
-            template.Append ( "      " + markerItem.ListMembers () + Environment.NewLine );
-            template.Append ( "   }"                               + Environment.NewLine );
-
-            foreach ( MarkerItem outgoingMarkerItem in markerItem.ListOutgoing )
+            else
             {
-               template.Append ( ""                                               + Environment.NewLine );
-               template.Append ( "   outgoing={"                                  + Environment.NewLine );
-               template.Append ( "      name=\"" + outgoingMarkerItem.Name + "\"" + Environment.NewLine );
-               template.Append ( ""                                               + Environment.NewLine );
-               template.Append ( "      path={"                                   + Environment.NewLine );
-               template.Append ( "      }"                                        + Environment.NewLine );
-               template.Append ( ""                                               + Environment.NewLine );
-               template.Append ( "      control={"                                + Environment.NewLine );
-               template.Append ( "      }"                                        + Environment.NewLine );
-               template.Append ( "   }"                                           + Environment.NewLine );
+                xPos -= halfWidth;
             }
 
-            if ( markerItem.ListOutgoing.Count == 0 )
+            if (yPos < halfHeight)
             {
-               template.Append ( ""           + Environment.NewLine );
-               template.Append ( "   end=yes" + Environment.NewLine );
+                yPos = 0;
             }
-
-            template.Append ( "}" + Environment.NewLine + Environment.NewLine );
-         }
-
-         File.WriteAllText ( pathOfExportFile, template.ToString ());
-      }
-
-      //------------------------------------------------------------------------
-
-      public Bitmap ZoomImage ( int xPos, int yPos, int width, int height )
-      {
-         int halfWidth  = width  / 2;
-         int halfHeight = height / 2;
-
-         if ( xPos < halfWidth )
-         {
-            xPos = 0;
-         }
-         //else if ( xPos > ( m_bitmapMap.Width - halfWidth ))
-         //{
-         //   xPos = ( m_bitmapMap.Width - halfWidth );
-         //}
-         else
-         {
-            xPos -= halfWidth;
-         }
-
-         if ( yPos < halfHeight )
-         {
-            yPos = 0;
-         }
-         //else if ( xPos > ( m_bitmapMap.Height - halfHeight ))
-         //{
-         //   xPos = ( m_bitmapMap.Height - halfHeight );
-         //}
-         else
-         {
-            yPos -= halfHeight;
-         }
-
-         var resizedRect = new Rectangle ( 0, 0, width, height );
-
-         var resizedImage = new Bitmap ( width, height );
-
-         using ( var graphics = Graphics.FromImage ( resizedImage ))
-         {
-            graphics.CompositingMode    = CompositingMode   .SourceOver;
-            graphics.CompositingQuality = CompositingQuality.HighSpeed ;
-            graphics.InterpolationMode  = InterpolationMode .Low       ;
-            graphics.SmoothingMode      = SmoothingMode     .HighSpeed ;
-            graphics.PixelOffsetMode    = PixelOffsetMode   .HighSpeed ;
-
-            using ( var wrapMode = new ImageAttributes () )
+            else
             {
-               wrapMode.SetWrapMode ( WrapMode.TileFlipXY );
-
-               graphics.DrawImage ( m_bitmapMap        , resizedRect, xPos, yPos, width, height, GraphicsUnit.Pixel, wrapMode );
-               graphics.DrawImage ( m_bitmapMapOverlay , resizedRect, xPos, yPos, width, height, GraphicsUnit.Pixel, wrapMode );
-
-               graphics.DrawImage ( m_bitmapMouseCursor, halfWidth, halfHeight, m_bitmapMouseCursor.Width, m_bitmapMouseCursor.Height );
+                yPos -= halfHeight;
             }
-         }
 
-         return resizedImage;
-      }
+            var resizedRect = new Rectangle(0, 0, width, height);
 
-      //------------------------------------------------------------------------
-      // Helper
-      //------------------------------------------------------------------------
+            var resizedImage = new Bitmap(width, height);
 
-      private void DrawCheckeredListPixel ( ProvinceDefinitionItem provinceDefinitionItem, Color drawColor )
-      {
-         foreach ( Pixel pixel in provinceDefinitionItem.ListPixel )
-         {
-            int posX = pixel.XPos % 3;
-            int posY = pixel.YPos % 3;
-
-            if (( posX == 1 ) && ( posY == 1 ))
+            using (var graphics = Graphics.FromImage(resizedImage))
             {
-               m_bitmapMapOverlay.SetPixel ( pixel.XPos, pixel.YPos, drawColor );
+                graphics.CompositingMode = CompositingMode.SourceOver;
+                graphics.CompositingQuality = CompositingQuality.HighSpeed;
+                graphics.InterpolationMode = InterpolationMode.Low;
+                graphics.SmoothingMode = SmoothingMode.HighSpeed;
+                graphics.PixelOffsetMode = PixelOffsetMode.HighSpeed;
+
+                using (var wrapMode = new ImageAttributes())
+                {
+                    wrapMode.SetWrapMode(WrapMode.TileFlipXY);
+
+                    graphics.DrawImage(BitmapMap, resizedRect, xPos, yPos, width, height, GraphicsUnit.Pixel, wrapMode);
+                    graphics.DrawImage(BitmapMapOverlay, resizedRect, xPos, yPos, width, height, GraphicsUnit.Pixel, wrapMode);
+
+                    graphics.DrawImage(m_bitmapMouseCursor, halfWidth, halfHeight, m_bitmapMouseCursor.Width, m_bitmapMouseCursor.Height);
+                }
             }
-         }
-      }
 
-      private void DrawHorizontalListPixel ( ProvinceDefinitionItem provinceDefinitionItem, Color drawColor )
-      {
-         foreach ( Pixel pixel in provinceDefinitionItem.ListPixel )
-         {
-            int posY = pixel.YPos % 4;
+            return resizedImage;
+        }
 
-            if ( posY == 1 )
-            {
-               m_bitmapMapOverlay.SetPixel ( pixel.XPos, pixel.YPos, drawColor );
-            }
-         }
-      }
+        #region Helper
+        private void DrawCheckeredListPixel(ProvinceDefinitionItem province, Color drawColor)
+        {
+            foreach (var pixel in province.Pixels.Where(pixel => pixel.XPos % 3 == 1 && pixel.YPos % 3 == 1))
+                BitmapMapOverlay.SetPixel(pixel.XPos, pixel.YPos, drawColor);
+        }
 
-      private void DrawVerticalListPixel ( ProvinceDefinitionItem provinceDefinitionItem, Color drawColor )
-      {
-         foreach ( Pixel pixel in provinceDefinitionItem.ListPixel )
-         {
-            int posX = pixel.XPos % 4;
+        private void DrawHorizontalListPixel(ProvinceDefinitionItem province, Color drawColor)
+        {
+            foreach (var pixel in province.Pixels.Where(pixel => pixel.YPos % 4 == 1))
+                BitmapMapOverlay.SetPixel(pixel.XPos, pixel.YPos, drawColor);
+        }
 
-            if ( posX == 1 )
-            {
-               m_bitmapMapOverlay.SetPixel ( pixel.XPos, pixel.YPos, drawColor );
-            }
-         }
-      }
+        private void DrawVerticalListPixel(ProvinceDefinitionItem province, Color drawColor)
+        {
+            foreach (var pixel in province.Pixels.Where(pixel => pixel.XPos % 4 == 1))
+                BitmapMapOverlay.SetPixel(pixel.XPos, pixel.YPos, drawColor);
+        }
 
-      private int GetMaxIdProvince ()
-      {
-         int idProvince = 0;
+        private int GetMaxIdProvince() => Provinces.Select(province => province.Id).Prepend(0).Max();
 
-         foreach ( ProvinceDefinitionItem provinceDefinitionItem in m_listProvinceDefinition )
-         {
-            if ( idProvince < provinceDefinitionItem.IdProvince )
-            {
-               idProvince = provinceDefinitionItem.IdProvince;
-            }
-         }
+        #endregion
 
-         return idProvince;
-      }
-
-      //------------------------------------------------------------------------
-      // Properties
-      //------------------------------------------------------------------------
-
-      public List<MarkerItem>             ListMarkerItem         { get => m_listMarkerItem        ; set => m_listMarkerItem         = value; }
-      public List<ProvinceDefinitionItem> ListProvinceDefinition { get => m_listProvinceDefinition; set => m_listProvinceDefinition = value; }
-      public Bitmap                       BitmapMapOverlay       { get => m_bitmapMapOverlay      ; set => m_bitmapMapOverlay       = value; }
-      public Bitmap                       BitmapMap              { get => m_bitmapMap             ; set => m_bitmapMap              = value; }
-   }
+        public List<MarkerItem> MarkerItems { get; set; } = new List<MarkerItem>();
+        public List<ProvinceDefinitionItem> Provinces { get; set; } = new List<ProvinceDefinitionItem>();
+        public Bitmap BitmapMapOverlay { get; set; }
+        public Bitmap BitmapMap { get; set; }
+    }
 }

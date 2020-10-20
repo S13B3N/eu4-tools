@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
@@ -37,22 +36,22 @@ namespace EUProvinceEditor.Gui
       {
          StringBuilder text = new StringBuilder ( 100000 );
 
-         foreach ( MarkerItem markerItem in m_provinceEditor.ListMarkerItem )
+         foreach ( MarkerItem markerItem in m_provinceEditor.MarkerItems )
          {
             text.Append ( markerItem.Name + " = " );
 
             bool bComma = false;
 
-            markerItem.ListProvince.Sort (( sortItem1, sortItem2 ) => ( sortItem1.IdProvince - sortItem2.IdProvince ));
+            markerItem.Provinces.Sort (( sortItem1, sortItem2 ) => ( sortItem1.Id - sortItem2.Id ));
 
-            foreach ( ProvinceDefinitionItem provinceDefinitionItem in markerItem.ListProvince )
+            foreach ( ProvinceDefinitionItem provinceDefinitionItem in markerItem.Provinces )
             {
                if ( bComma )
                {
                   text.Append ( " " );
                }
 
-               text.Append ( provinceDefinitionItem.IdProvince );
+               text.Append ( provinceDefinitionItem.Id );
 
                bComma = true;
             }
