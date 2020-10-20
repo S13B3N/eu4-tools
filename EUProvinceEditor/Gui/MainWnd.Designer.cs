@@ -134,21 +134,21 @@
          this.m_btnLoadTradenodes.Name = "m_btnLoadTradenodes";
          this.m_btnLoadTradenodes.Size = new System.Drawing.Size(162, 22);
          this.m_btnLoadTradenodes.Text = "&Load tradenodes";
-         this.m_btnLoadTradenodes.Click += new System.EventHandler(this.M_btnLoadTradenodes_Click);
+         this.m_btnLoadTradenodes.Click += new System.EventHandler(this.BtnLoadTradenodes_Click);
          // 
          // m_btnSaveTradenodes
          // 
          this.m_btnSaveTradenodes.Name = "m_btnSaveTradenodes";
          this.m_btnSaveTradenodes.Size = new System.Drawing.Size(162, 22);
          this.m_btnSaveTradenodes.Text = "&Save tradenodes";
-         this.m_btnSaveTradenodes.Click += new System.EventHandler(this.M_btnSaveTradenodes_Click);
+         this.m_btnSaveTradenodes.Click += new System.EventHandler(this.BtnSaveTradenodes_Click);
          // 
          // m_btnSaveMap
          // 
          this.m_btnSaveMap.Name = "m_btnSaveMap";
          this.m_btnSaveMap.Size = new System.Drawing.Size(162, 22);
          this.m_btnSaveMap.Text = "Save &Map";
-         this.m_btnSaveMap.Click += new System.EventHandler(this.M_btnSaveMap_Click);
+         this.m_btnSaveMap.Click += new System.EventHandler(this.BtnSaveMap_Click);
          // 
          // toolStripSeparator1
          // 
@@ -160,7 +160,7 @@
          this.m_btnClose.Name = "m_btnClose";
          this.m_btnClose.Size = new System.Drawing.Size(162, 22);
          this.m_btnClose.Text = "&Exit";
-         this.m_btnClose.Click += new System.EventHandler(this.M_btnClose_Click);
+         this.m_btnClose.Click += new System.EventHandler(this.BtnClose_Click);
          // 
          // hilfeToolStripMenuItem
          // 
@@ -189,7 +189,7 @@
          this.m_btnExportTradenodes.Name = "m_btnExportTradenodes";
          this.m_btnExportTradenodes.Size = new System.Drawing.Size(180, 22);
          this.m_btnExportTradenodes.Text = "00_tradenodes.txt";
-         this.m_btnExportTradenodes.Click += new System.EventHandler(this.M_btnExportTradenodes_Click);
+         this.m_btnExportTradenodes.Click += new System.EventHandler(this.BtnExportTradenodes_Click);
          // 
          // m_btnClear
          // 
@@ -199,7 +199,7 @@
          this.m_btnClear.TabIndex = 4;
          this.m_btnClear.Text = "Clear tradenodes";
          this.m_btnClear.UseVisualStyleBackColor = true;
-         this.m_btnClear.Click += new System.EventHandler(this.M_btnClear_Click);
+         this.m_btnClear.Click += new System.EventHandler(this.BtnClear_Click);
          // 
          // m_cbShowOverlay
          // 
@@ -212,7 +212,7 @@
          this.m_cbShowOverlay.TabIndex = 6;
          this.m_cbShowOverlay.Text = "Show tradenodes";
          this.m_cbShowOverlay.UseVisualStyleBackColor = true;
-         this.m_cbShowOverlay.CheckedChanged += new System.EventHandler(this.M_cbShowOverlay_CheckedChanged);
+         this.m_cbShowOverlay.CheckedChanged += new System.EventHandler(this.CbShowOverlay_CheckedChanged);
          // 
          // m_cbMarker
          // 
@@ -222,7 +222,7 @@
          this.m_cbMarker.Name = "m_cbMarker";
          this.m_cbMarker.Size = new System.Drawing.Size(217, 21);
          this.m_cbMarker.TabIndex = 9;
-         this.m_cbMarker.SelectedIndexChanged += new System.EventHandler(this.M_cbMarker_SelectedIndexChanged);
+         this.m_cbMarker.SelectedIndexChanged += new System.EventHandler(this.CbMarker_SelectedIndexChanged);
          // 
          // label2
          // 
@@ -241,7 +241,7 @@
          this.m_btnSave.TabIndex = 11;
          this.m_btnSave.Text = "Show tradenodes";
          this.m_btnSave.UseVisualStyleBackColor = true;
-         this.m_btnSave.Click += new System.EventHandler(this.M_btnSave_Click);
+         this.m_btnSave.Click += new System.EventHandler(this.BtnSave_Click);
          // 
          // m_ttMarkr
          // 
@@ -256,7 +256,7 @@
          this.m_btnZoom.TabIndex = 13;
          this.m_btnZoom.Text = "Zoom";
          this.m_btnZoom.UseVisualStyleBackColor = true;
-         this.m_btnZoom.Click += new System.EventHandler(this.M_btnZoomout_Click);
+         this.m_btnZoom.Click += new System.EventHandler(this.BtnZoomout_Click);
          // 
          // m_btnMarkProvinces
          // 
@@ -266,7 +266,7 @@
          this.m_btnMarkProvinces.TabIndex = 14;
          this.m_btnMarkProvinces.Text = "Provinces";
          this.m_btnMarkProvinces.UseVisualStyleBackColor = true;
-         this.m_btnMarkProvinces.Click += new System.EventHandler(this.M_btnMarkProvinces_Click);
+         this.m_btnMarkProvinces.Click += new System.EventHandler(this.BtnMarkProvinces_Click);
          // 
          // m_btnMarkLocation
          // 
@@ -276,7 +276,7 @@
          this.m_btnMarkLocation.TabIndex = 15;
          this.m_btnMarkLocation.Text = "Location";
          this.m_btnMarkLocation.UseVisualStyleBackColor = true;
-         this.m_btnMarkLocation.Click += new System.EventHandler(this.M_btnMarkLocation_Click);
+         this.m_btnMarkLocation.Click += new System.EventHandler(this.BtnMarkLocation_Click);
          // 
          // m_btnMarkOutgoing
          // 
@@ -286,7 +286,7 @@
          this.m_btnMarkOutgoing.TabIndex = 16;
          this.m_btnMarkOutgoing.Text = "Outgoing";
          this.m_btnMarkOutgoing.UseVisualStyleBackColor = true;
-         this.m_btnMarkOutgoing.Click += new System.EventHandler(this.M_btnOutgoing_Click);
+         this.m_btnMarkOutgoing.Click += new System.EventHandler(this.BtnOutgoing_Click);
          // 
          // MainWnd
          // 

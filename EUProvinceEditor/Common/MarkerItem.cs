@@ -1,74 +1,39 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace EUProvinceEditor.Common
 {
-   public class MarkerItem
-   {
-      private String m_name     = "";
-      private int    m_r        = 0 ;
-      private int    m_g        = 0 ;
-      private int    m_b        = 0 ;
-      private int    m_a        = 0 ;
-      private int    m_location = 0 ;
+    public class MarkerItem
+    {
+        public MarkerItem()
+        {
+        }
 
-      private String m_outgoing;
+        public MarkerItem(string name, int r, int g, int b, int a, int location, string outgoing)
+        {
+            Name = name;
+            R = r;
+            G = g;
+            B = b;
+            A = a;
+            Location = location;
+            Outgoing = outgoing;
 
-      private List<ProvinceDefinitionItem> m_listProvinces = new List<ProvinceDefinitionItem> ();
+            Color = Color.FromArgb(R, G, B);
+        }
 
-      private List<MarkerItem> m_listOutgoing = new List<MarkerItem> ();
+        public string ListMembers() => string.Join(" ", Provinces.Select(p => p.Id.ToString()));
 
-      private Color m_color;
-
-      //------------------------------------------------------------------------
-
-      public MarkerItem ()
-      {
-      }
-
-      public MarkerItem ( String name, int r, int g, int b, int a, int location, String outgoing )
-      {
-         m_name     = name    ;
-         m_r        = r       ;
-         m_g        = g       ;
-         m_b        = b       ;
-         m_a        = a       ;
-         m_location = location;
-         m_outgoing = outgoing;
-
-         m_color = Color.FromArgb ( R, G, B );
-      }
-
-      public String ListMembers ()
-      {
-         StringBuilder memberBuilder = new StringBuilder ();
-
-         foreach ( ProvinceDefinitionItem provinceDefinitionItem in ListProvince )
-         {
-            memberBuilder.Append ( " " + provinceDefinitionItem.IdProvince );
-         }
-
-         return memberBuilder.ToString ();
-      }
-
-      //------------------------------------------------------------------------
-      // Properties
-      //------------------------------------------------------------------------
-
-      public String                       Name           { get => m_name          ; set => m_name           = value; }
-      public int                          R              { get => m_r             ; set => m_r              = value; }
-      public int                          G              { get => m_g             ; set => m_g              = value; }
-      public int                          B              { get => m_b             ; set => m_b              = value; }
-      public int                          A              { get => m_a             ; set => m_a              = value; }
-      public int                          Location       { get => m_location      ; set => m_location       = value; }
-      public List<MarkerItem>             ListOutgoing   { get => m_listOutgoing  ; set => m_listOutgoing   = value; }
-      public List<ProvinceDefinitionItem> ListProvince   { get => m_listProvinces ; set => m_listProvinces  = value; }
-      public Color                        Color          { get => m_color         ; set => m_color          = value; }
-      public String                       Outgoing       { get => m_outgoing      ; set => m_outgoing       = value; }
-   }
+        public string Name { get; set; }
+        public int R { get; set; }
+        public int G { get; set; }
+        public int B { get; set; }
+        public int A { get; set; }
+        public int Location { get; set; }
+        public List<MarkerItem> OutgoingItems { get; set; } = new List<MarkerItem>();
+        public List<ProvinceDefinitionItem> Provinces { get; set; } = new List<ProvinceDefinitionItem>();
+        public Color Color { get; set; }
+        public string Outgoing { get; set; }
+    }
 }
-
