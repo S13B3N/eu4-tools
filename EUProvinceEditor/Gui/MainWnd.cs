@@ -137,7 +137,7 @@ namespace EUProvinceEditor.Gui
                m_lblLoading.Text = mouseCoord + "";
             }
          }
-         catch ( Exception ex )
+         catch ( Exception )
          {
          }
       }
@@ -231,7 +231,7 @@ namespace EUProvinceEditor.Gui
 
                UpdateGui ();
             }
-            catch ( Exception ex )
+            catch ( Exception )
             {
                MessageBox.Show ( "Cant load tradenodes", "Cant load tradenodes", MessageBoxButtons.OK, MessageBoxIcon.Error );
             }

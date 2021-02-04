@@ -62,7 +62,7 @@ namespace EUProvinceEditor.Common
 
             OnInitFinished?.Invoke ();
          }
-         catch ( Exception ex )
+         catch ( Exception )
          {
             OnInitError?.Invoke ();
          }
@@ -687,7 +687,7 @@ namespace EUProvinceEditor.Common
          {
             saveBitmap.Save ( pathOfBitmap );
          }
-         catch ( Exception ex )
+         catch ( Exception )
          {
             int k = 4711;
          }
